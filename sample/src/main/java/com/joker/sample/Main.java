@@ -3,15 +3,17 @@ package com.joker.sample;
 import com.joker.sample.api.HomeApi;
 import io.reactivex.schedulers.Schedulers;
 import retrofit2.Refito;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class Main {
-  private Refito refito = new Refito.Builder().baseUrl("https://api-m.mtime.cn").build();
+  private Refito refito = new Refito.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl("https://api-m.mtime.cn").build();
 
   @SuppressWarnings("ResultOfMethodCallIgnored") public static void main(String[] args) {
     Main main = new Main();
     main.refito.create(HomeApi.class)
         .getHot()
         .getSell()
+        .getPersons()
         .zip()
         .subscribe(response -> System.out.println(response.getMessage()),
             Throwable::printStackTrace);

@@ -4,6 +4,8 @@ import io.reactivex.Scheduler;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import javax.annotation.Nullable;
 import retrofit2.CallAdapter;
 import retrofit2.Response;
@@ -34,14 +36,20 @@ public class RxJava2ZipCallAdapterFactory extends CallAdapter.Factory {
     this.isAsync = isAsync;
   }
 
+  private List<CallAdapter> callAdapterList = new ArrayList<>();
+
+  public void setCallAdapters(List<CallAdapter> callAdapters) {
+    callAdapterList.clear();
+    callAdapterList.addAll(callAdapters);
+  }
+
   @Override
-  public CallAdapter<?, ?> get(Type returnType, Annotation[] annotations, Retrofit retrofit) {
+  public CallAdapter<?, ?> get(Type observableType, Annotation[] annotations, Retrofit retrofit) {
     if (findZipMethodAnnotation(annotations)) {
       boolean isResult = false;
       boolean isBody = false;
       Type responseType;
 
-      Type observableType = getParameterUpperBound(0, (ParameterizedType) returnType);
       Class<?> rawObservableType = getRawType(observableType);
       if (rawObservableType == Response.class) {
         if (!(observableType instanceof ParameterizedType)) {
@@ -61,7 +69,7 @@ public class RxJava2ZipCallAdapterFactory extends CallAdapter.Factory {
         isBody = true;
       }
 
-      return new RxJava2ZipCallAdapter(responseType, scheduler, isAsync, isResult, isBody);
+      return new RxJava2ZipCallAdapter(responseType, scheduler, isAsync, isResult, isBody, callAdapterList);
     }
     return null;
   }

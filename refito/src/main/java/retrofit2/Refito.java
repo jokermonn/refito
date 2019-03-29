@@ -32,7 +32,7 @@ public class Refito {
     this.callFactory = callFactory;
     // TODO
     rxJava2ZipCallAdapterFactory = RxJava2ZipCallAdapterFactory.create();
-    callAdapterFactories.add(rxJava2ZipCallAdapterFactory);
+    callAdapterFactories.add(0, rxJava2ZipCallAdapterFactory);
     retrofit = new Retrofit(callFactory, baseUrl, converterFactories, callAdapterFactories,
         callbackExecutor, validateEagerly);
   }
@@ -82,7 +82,7 @@ public class Refito {
                     + methodAnnotationCalibrator.toString()
                     + " to annotation RefitoCallResponse?");
               }
-              return methodHandler.handle(methodMap);
+              return methodHandler.handle(methodMap, rxJava2ZipCallAdapterFactory);
             } else {
               Chunk chunk = method.getAnnotation(Chunk.class);
               if (chunk != null && !methodAnnotationCalibrator.contains(chunk.value())) {
@@ -159,6 +159,11 @@ public class Refito {
     }
 
     public Refito build() {
+      okhttp3.Call.Factory callFactory = this.callFactory;
+      if (callFactory == null) {
+        callFactory = new OkHttpClient();
+      }
+
       return new Refito(callFactory, baseUrl, unmodifiableList(converterFactories),
           callAdapterFactories, callbackExecutor, validateEagerly);
     }

@@ -1,23 +1,23 @@
 package retrofit2;
 
 public final class RefitoCallResponse {
-  private final String key;
-  private final Object value;
+  private final String chunk;
+  private final Object body;
 
-  private RefitoCallResponse(String key, Object value) {
-    this.key = key;
-    this.value = value;
+  private RefitoCallResponse(String chunk, Object body) {
+    this.chunk = chunk;
+    this.body = body;
   }
 
   static RefitoCallResponse create(String key, Object value) {
     return new RefitoCallResponse(key, value);
   }
 
-  public Object getValue() {
-    return value;
+  public Object getBody() {
+    return body;
   }
 
-  public String getKey() {
-    return key;
+  public String getChunk() {
+    return chunk;
   }
 }

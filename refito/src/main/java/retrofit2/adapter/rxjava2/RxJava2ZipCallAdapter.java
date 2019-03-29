@@ -9,10 +9,8 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
-import retrofit2.Call;
-import retrofit2.CallAdapter;
-import retrofit2.RefitoCall;
-import retrofit2.RefitoCallResponse;
+
+import retrofit2.*;
 import retrofit2.http.Chunk;
 
 final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
@@ -24,7 +22,7 @@ final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
   private final boolean isBody;
 
   RxJava2ZipCallAdapter(Type responseType, @Nullable Scheduler scheduler, boolean isAsync,
-      boolean isResult, boolean isBody) {
+      boolean isResult, boolean isBody, List<CallAdapter> callAdapters) {
     this.responseType = responseType;
     this.scheduler = scheduler;
     this.isAsync = isAsync;
@@ -38,22 +36,24 @@ final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
 
   @SuppressWarnings("unchecked") @Override public Object adapt(Call<R> call) {
     if (call instanceof RefitoCall) {
-      List<Observable<RefitoCallResponse>> observableList = new ArrayList<>();
-      for (Call realCall : ((RefitoCall) call).getRealCall()) {
+      List<Observable<Response>> observableList = new ArrayList<>();
+      final List<CallWrapper> callWrappers = ((RefitoCall) call).getCallWrappers();
+      for (CallWrapper callWrapper : callWrappers) {
         observableList.add(isAsync
-            ? new CallEnqueueObservable<>(realCall)
-            : new CallExecuteObservable<>(realCall));
+            ? new CallEnqueueObservable<>(callWrapper.getCall())
+            : new CallExecuteObservable<>(callWrapper.getCall()));
       }
       Observable<?> observable = Observable.zip(observableList, new Function<Object[], Object>() {
         @Override public Object apply(Object[] objects) throws Exception {
-          Class<? extends Type> response = responseType.getClass();
+          Class<? extends Type> response = (Class<? extends Type>) responseType;
           Object result = response.newInstance();
-          for (Object res : objects) {
+          for (int i = 0; i < objects.length; i++) {
+            Response object = (Response) objects[i];
             for (Field declaredField : response.getDeclaredFields()) {
               Chunk chunk = declaredField.getAnnotation(Chunk.class);
-              if (chunk != null && ((RefitoCallResponse) res).getKey().equals(chunk.value())) {
+              if (chunk != null && callWrappers.get(i).getChunk().equals(chunk.value())) {
                 declaredField.setAccessible(true);
-                declaredField.set(result, declaredField.getType().newInstance());
+                declaredField.set(result, object.body());
               }
             }
           }
