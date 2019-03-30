@@ -9,7 +9,7 @@ final class MethodComposition {
   final Method method;
   /** response field **/
   final Field field;
-  /** The actual return value of the API method & response filed type**/
+  /** The actual return value of the API method & response filed type **/
   final Type methodReturnType;
 
   static MethodComposition create(Method method, Field field) {
@@ -19,6 +19,6 @@ final class MethodComposition {
   private MethodComposition(Method method, Field field) {
     this.method = method;
     this.field = field;
-    this.methodReturnType = field.getType();
+    this.methodReturnType = field.getGenericType();
   }
 }

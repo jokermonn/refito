@@ -5,7 +5,6 @@ import io.reactivex.Observable;
 import io.reactivex.Scheduler;
 import io.reactivex.functions.Function;
 import io.reactivex.plugins.RxJavaPlugins;
-import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,22 +39,31 @@ public final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
 
   @SuppressWarnings("unchecked") @Override public Object adapt(final Call<R> call) {
     if (call instanceof RefitoCall) {
-      List<Observable<Response>> observableList = new ArrayList<>();
-      final List<Call> callWrappers = ((RefitoCall) call).getCalls();
-      for (Call realCall : callWrappers) {
-        observableList.add(isAsync ? new CallEnqueueObservable<>(realCall)
-            : new CallExecuteObservable<>(realCall));
+      List<Observable<?>> observableList = new ArrayList<>();
+      final List<RefitoCall.RealCall> calls = ((RefitoCall) call).getCalls();
+      for (RefitoCall.RealCall realCall : calls) {
+        Observable<Response<Object>> responseObservable = isAsync ?
+            new CallEnqueueObservable<>(realCall.getCall()) :
+            new CallExecuteObservable<>(realCall.getCall());
+
+        Observable<?> observable;
+        if (realCall.isResult()) {
+          observable = new ResultObservable<>(responseObservable);
+        } else if (realCall.isBody()) {
+          observable = new BodyObservable<>(responseObservable);
+        } else {
+          observable = responseObservable;
+        }
+
+        observableList.add(observable);
       }
       Observable<?> observable = Observable.zip(observableList, new Function<Object[], Object>() {
         @Override public Object apply(Object[] objects) throws Exception {
           Class<? extends Type> zipResponseType =
               (Class<? extends Type>) RxJava2ZipCallAdapter.this.zipResponseType;
-          Object result = zipResponseType.newInstance();
+          Object result = UnsafeAllocator.create().newInstance(zipResponseType);
           for (int i = 0; i < objects.length; i++) {
-            Response object = (Response) objects[i];
-            Field filed = ((RefitoCall) call).findFiledByIndex(i);
-            filed.setAccessible(true);
-            filed.set(result, object.body());
+            ((RefitoCall) call).setResponse(i, result, objects[i]);
           }
           return result;
         }

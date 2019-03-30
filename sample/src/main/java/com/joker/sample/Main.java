@@ -2,7 +2,6 @@ package com.joker.sample;
 
 import com.joker.sample.api.HomeApi;
 import retrofit2.Refito;
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.adapter.rxjava2.RxJava2ZipCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 

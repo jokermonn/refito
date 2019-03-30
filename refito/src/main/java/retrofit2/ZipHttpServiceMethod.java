@@ -2,12 +2,15 @@ package retrofit2;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 
 import okhttp3.ResponseBody;
 import retrofit2.adapter.rxjava2.RxJava2ZipCallAdapter;
 
+import static retrofit2.Utils.getParameterUpperBound;
+import static retrofit2.Utils.getRawType;
 import static retrofit2.Utils.methodError;
 
 final class ZipHttpServiceMethod extends ServiceMethod<Object> {
@@ -21,11 +24,15 @@ final class ZipHttpServiceMethod extends ServiceMethod<Object> {
     List<RequestFactory2> requestFactory2s = new ArrayList<>(methodCompositions.size());
     for (MethodComposition methodInfo : methodCompositions) {
       Method method = methodInfo.method;
+      Type methodReturnType = methodInfo.methodReturnType;
+      methodReturnType =
+          methodReturnType instanceof ParameterizedType ? getRawType(getParameterUpperBound(0,
+              (ParameterizedType) methodReturnType)) : methodReturnType;
       requestFactory2s.add(
           RequestFactory2.create(
               RequestFactory.parseAnnotations(retrofit, method),
               methodInfo.field,
-              createResponseConverter(retrofit, method, methodInfo.methodReturnType)
+              createResponseConverter(retrofit, method, methodReturnType)
           )
       );
     }

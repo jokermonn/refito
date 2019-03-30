@@ -2,24 +2,26 @@ package retrofit2;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
 import io.reactivex.Observable;
 import okhttp3.Request;
+import retrofit2.adapter.rxjava2.Result;
 import retrofit2.http.Chunk;
+
+import static retrofit2.Utils.getParameterUpperBound;
+import static retrofit2.Utils.getRawType;
 
 public final class RefitoCall implements Call<Object> {
 
-  private List<Call> calls;
+  private List<RealCall> calls;
   private List<Field> fields;
 
-  public List<Call> getCalls() {
+  public List<RealCall> getCalls() {
     return calls;
-  }
-
-  public Field findFiledByIndex(int i) {
-    return fields.get(i);
   }
 
   RefitoCall(List<RequestFactory2> requestFactory2s, Object[] args,
@@ -29,9 +31,50 @@ public final class RefitoCall implements Call<Object> {
 
     for (int i = 0; i < requestFactory2s.size(); i++) {
       RequestFactory2 requestFactory2 = requestFactory2s.get(i);
-      calls.add(new OkHttpCall<>(requestFactory2.requestFactory, (Object[]) args[i], callFactory,
-          requestFactory2.converter));
-      fields.add(requestFactory2.field);
+      Field field = requestFactory2.field;
+      calls.add(new RealCall(
+          new OkHttpCall<>(requestFactory2.requestFactory, (Object[]) args[i], callFactory,
+              requestFactory2.converter),
+          field.getGenericType()
+      ));
+      fields.add(field);
+    }
+  }
+
+  public void setResponse(int index, Object result, Object object) throws Exception {
+    Field filed = fields.get(index);
+    filed.setAccessible(true);
+    filed.set(result, object);
+  }
+
+  public static class RealCall {
+    private final Call call;
+    private boolean isResult;
+    private boolean isBody;
+
+    private RealCall(Call call, Type returnType) {
+      this.call = call;
+
+      if (returnType instanceof ParameterizedType) {
+        Class<?> rawObservableType = getRawType(returnType);
+        if (rawObservableType == Result.class) {
+          isResult = true;
+        }
+      } else {
+        isBody = true;
+      }
+    }
+
+    public Call getCall() {
+      return call;
+    }
+
+    public boolean isResult() {
+      return isResult;
+    }
+
+    public boolean isBody() {
+      return isBody;
     }
   }
 
