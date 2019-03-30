@@ -9,7 +9,7 @@ import io.reactivex.Observable;
 import okhttp3.Request;
 import retrofit2.http.Chunk;
 
-public final class RefitoCall implements Call<Observable<?>> {
+public final class RefitoCall implements Call<Object> {
 
   private List<Call> calls;
   private List<Field> fields;
@@ -36,12 +36,12 @@ public final class RefitoCall implements Call<Observable<?>> {
   }
 
   @Override
-  public Response<Observable<?>> execute() throws IOException {
+  public Response<Object> execute() throws IOException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void enqueue(Callback<Observable<?>> callback) {
+  public void enqueue(Callback<Object> callback) {
     throw new UnsupportedOperationException();
   }
 
@@ -58,7 +58,7 @@ public final class RefitoCall implements Call<Observable<?>> {
   }
 
   @Override
-  public Call<Observable<?>> clone() {
+  public Call<Object> clone() {
     throw new UnsupportedOperationException();
   }
 

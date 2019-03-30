@@ -1,11 +1,14 @@
 package retrofit2.adapter.rxjava2;
 
+import io.reactivex.Completable;
+import io.reactivex.Flowable;
+import io.reactivex.Maybe;
+import io.reactivex.Observable;
 import io.reactivex.Scheduler;
+import io.reactivex.Single;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
 import javax.annotation.Nullable;
 import retrofit2.CallAdapter;
 import retrofit2.Response;
@@ -37,14 +40,30 @@ public final class RxJava2ZipCallAdapterFactory extends CallAdapter.Factory {
   }
 
   @Override
-  public CallAdapter<?, ?> get(Type observableType, Annotation[] annotations, Retrofit retrofit) {
+  public CallAdapter<?, ?> get(Type returnType, Annotation[] annotations, Retrofit retrofit) {
     if (findZipMethodAnnotation(annotations)) {
-      Class<?> rawObservableType = getRawType(observableType);
-      if (rawObservableType == Response.class || rawObservableType == Result.class) {
-        throw new IllegalStateException("Response type can not be Response or Result");
+      Class<?> rawType = getRawType(returnType);
+      if (rawType == Completable.class) {
+        return new RxJava2ZipCallAdapter(Void.class, this.scheduler, this.isAsync, false, false,
+            false, true);
       }
 
-      return new RxJava2ZipCallAdapter(observableType, scheduler, isAsync);
+      boolean isFlowable = rawType == Flowable.class;
+      boolean isSingle = rawType == Single.class;
+      boolean isMaybe = rawType == Maybe.class;
+      if (rawType != Observable.class && !isFlowable && !isSingle && !isMaybe) {
+        throw new IllegalStateException(
+            "@ZipMethod not support annotation methods that return " + rawType);
+      }
+
+      Type observableType = getParameterUpperBound(0, (ParameterizedType) returnType);
+      Class<?> rawObservableType = getRawType(observableType);
+      if (rawObservableType == Response.class || rawObservableType == Result.class) {
+        throw new IllegalStateException("zip response body type can not be Response or Result");
+      }
+
+      return new RxJava2ZipCallAdapter(observableType, scheduler, isAsync, isFlowable, isSingle,
+          isMaybe, false);
     }
     return null;
   }

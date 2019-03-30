@@ -1,23 +1,23 @@
 package retrofit2;
 
-import io.reactivex.Observable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.*;
 
 import okhttp3.ResponseBody;
+import retrofit2.adapter.rxjava2.RxJava2ZipCallAdapter;
 
 import static retrofit2.Utils.methodError;
 
-final class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
+final class ZipHttpServiceMethod extends ServiceMethod<Object> {
 
-  @Override Observable<?> invoke(Object[] args) {
-    return (Observable<?>) callAdapter.adapt(new RefitoCall(requestFactory2s, args, callFactory));
+  @Override Object invoke(Object[] args) {
+    return callAdapter.adapt(new RefitoCall(requestFactory2s, args, callFactory));
   }
 
   static ZipHttpServiceMethod parseAnnotations(Retrofit retrofit,
-      List<MethodComposition> methodCompositions, Class<?> zipResponseClass) {
+      List<MethodComposition> methodCompositions, Type zipMethodType) {
     List<RequestFactory2> requestFactory2s = new ArrayList<>(methodCompositions.size());
     for (MethodComposition methodInfo : methodCompositions) {
       Method method = methodInfo.method;
@@ -30,14 +30,14 @@ final class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
       );
     }
 
-    CallAdapter<Observable<?>, Object> callAdapter = createCallAdapter(retrofit, zipResponseClass);
+    RxJava2ZipCallAdapter<Object> callAdapter = createCallAdapter(retrofit, zipMethodType);
     return new ZipHttpServiceMethod(requestFactory2s, retrofit.callFactory, callAdapter);
   }
 
-  private static CallAdapter<Observable<?>, Object> createCallAdapter(
+  private static RxJava2ZipCallAdapter<Object> createCallAdapter(
       Retrofit retrofit, Type responseType) {
     //noinspection unchecked
-    return (CallAdapter<Observable<?>, Object>) retrofit.callAdapter(responseType,
+    return (RxJava2ZipCallAdapter<Object>) retrofit.callAdapter(responseType,
         new Annotation[] {new Annotation() {
           @Override
           public Class<? extends Annotation> annotationType() {
@@ -46,7 +46,7 @@ final class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
         }});
   }
 
-  private static Converter<ResponseBody, Observable<?>> createResponseConverter(
+  private static Converter<ResponseBody, Object> createResponseConverter(
       Retrofit retrofit, Method method, Type responseType) {
     Annotation[] annotations = method.getAnnotations();
     try {
@@ -58,10 +58,10 @@ final class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
 
   private final okhttp3.Call.Factory callFactory;
   private final List<RequestFactory2> requestFactory2s;
-  private final CallAdapter<Observable<?>, Object> callAdapter;
+  private final RxJava2ZipCallAdapter<Object> callAdapter;
 
   private ZipHttpServiceMethod(List<RequestFactory2> requestFactory2s,
-      okhttp3.Call.Factory callFactory, CallAdapter<Observable<?>, Object> callAdapter) {
+      okhttp3.Call.Factory callFactory, RxJava2ZipCallAdapter<Object> callAdapter) {
     this.requestFactory2s = requestFactory2s;
     this.callFactory = callFactory;
     this.callAdapter = callAdapter;

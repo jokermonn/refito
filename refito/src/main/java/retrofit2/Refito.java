@@ -1,36 +1,26 @@
 package retrofit2;
 
 import io.reactivex.annotations.Nullable;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Executor;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
-import retrofit2.adapter.rxjava2.RxJava2ZipCallAdapterFactory;
-import retrofit2.http.Chunk;
-import retrofit2.internal.ChunkValueRepeatException;
 import retrofit2.http.ZipResponseBody;
 
 import static java.util.Collections.unmodifiableList;
 
 public class Refito {
-  final okhttp3.Call.Factory callFactory;
-  Retrofit retrofit;
+  private Retrofit retrofit;
 
   Refito(okhttp3.Call.Factory callFactory, HttpUrl baseUrl,
       List<Converter.Factory> converterFactories, List<CallAdapter.Factory> callAdapterFactories,
       @Nullable Executor callbackExecutor, boolean validateEagerly) {
-    this.callFactory = callFactory;
-    // TODO
-    callAdapterFactories.add(0, RxJava2ZipCallAdapterFactory.create());
     retrofit = new Retrofit(callFactory, baseUrl, converterFactories, callAdapterFactories,
         callbackExecutor, validateEagerly);
   }
@@ -48,7 +38,8 @@ public class Refito {
             } else if (method.getDeclaringClass() == ZipApi.class) {
               for (Class<?> declaredClass : service.getDeclaredClasses()) {
                 if (declaredClass.getAnnotation(ZipResponseBody.class) != null) {
-                  return new MethodHandler(declaredClass, retrofit).handle(methodMap);
+                  return new MethodHandler(declaredClass, method.getReturnType(), retrofit)
+                      .handle(methodMap);
                 }
               }
               throw new IllegalArgumentException(

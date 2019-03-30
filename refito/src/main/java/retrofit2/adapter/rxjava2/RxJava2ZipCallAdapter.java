@@ -1,5 +1,6 @@
 package retrofit2.adapter.rxjava2;
 
+import io.reactivex.BackpressureStrategy;
 import io.reactivex.Observable;
 import io.reactivex.Scheduler;
 import io.reactivex.functions.Function;
@@ -12,16 +13,25 @@ import javax.annotation.Nullable;
 
 import retrofit2.*;
 
-final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
+public final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
 
   private final Type zipResponseType;
   private final @Nullable Scheduler scheduler;
   private final boolean isAsync;
+  private final boolean isFlowable;
+  private final boolean isSingle;
+  private final boolean isMaybe;
+  private final boolean isCompletable;
 
-  RxJava2ZipCallAdapter(Type zipResponseType, @Nullable Scheduler scheduler, boolean isAsync) {
+  RxJava2ZipCallAdapter(Type zipResponseType, @Nullable Scheduler scheduler, boolean isAsync,
+      boolean isFlowable, boolean isSingle, boolean isMaybe, boolean isCompletable) {
     this.zipResponseType = zipResponseType;
     this.scheduler = scheduler;
     this.isAsync = isAsync;
+    this.isFlowable = isFlowable;
+    this.isSingle = isSingle;
+    this.isMaybe = isMaybe;
+    this.isCompletable = isCompletable;
   }
 
   @Override public Type responseType() {
@@ -50,8 +60,22 @@ final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
           return result;
         }
       });
+
       if (scheduler != null) {
         observable = observable.subscribeOn(scheduler);
+      }
+
+      if (isFlowable) {
+        return observable.toFlowable(BackpressureStrategy.LATEST);
+      }
+      if (isSingle) {
+        return observable.singleOrError();
+      }
+      if (isMaybe) {
+        return observable.singleElement();
+      }
+      if (isCompletable) {
+        return observable.ignoreElements();
       }
       return RxJavaPlugins.onAssembly(observable);
     }

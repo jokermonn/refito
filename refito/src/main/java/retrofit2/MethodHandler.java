@@ -2,6 +2,8 @@ package retrofit2;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,13 +14,18 @@ import java.util.Set;
 import retrofit2.http.Chunk;
 import retrofit2.internal.ChunkValueRepeatException;
 
-final class MethodHandler<T> {
+import static retrofit2.Utils.getParameterUpperBound;
+import static retrofit2.Utils.getRawType;
 
-  private final Class<T> zipResponseClass;
+final class MethodHandler {
+
+  private final Class<?> zipResponseClass;
+  private final Type zipMethodType;
   private final Retrofit retrofit;
 
-  MethodHandler(Class<T> zipResponseClass, Retrofit retrofit) {
+  MethodHandler(Class<?> zipResponseClass, Type zipMethodType, Retrofit retrofit) {
     this.zipResponseClass = zipResponseClass;
+    this.zipMethodType = zipMethodType;
     this.retrofit = retrofit;
   }
 
@@ -61,16 +68,30 @@ final class MethodHandler<T> {
 
       Field field = chunkWithField.get(methodChunkValue);
       if (field == null) {
-        throw new IllegalArgumentException("do you forget to use "
+        throw new IllegalArgumentException("do you forget to use \""
             + methodChunkValue
-            + " to annotation the method response body?");
+            + "\" to annotation the method response body?");
       }
 
       methodCompositions.add(MethodComposition.create(method, field));
       args.add(methodEntry.getValue());
     }
 
-    return ZipHttpServiceMethod.parseAnnotations(retrofit, methodCompositions, zipResponseClass)
+    ParameterizedType parameterizedType = new ParameterizedType() {
+      @Override public Type[] getActualTypeArguments() {
+        return new Type[] {zipResponseClass};
+      }
+
+      @Override public Type getRawType() {
+        return zipMethodType;
+      }
+
+      @Override public Type getOwnerType() {
+        throw new UnsupportedOperationException();
+      }
+    };
+
+    return ZipHttpServiceMethod.parseAnnotations(retrofit, methodCompositions, parameterizedType)
         .invoke(args.toArray());
   }
 }

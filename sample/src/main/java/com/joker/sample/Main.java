@@ -2,10 +2,17 @@ package com.joker.sample;
 
 import com.joker.sample.api.HomeApi;
 import retrofit2.Refito;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
+import retrofit2.adapter.rxjava2.RxJava2ZipCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class Main {
-  private Refito refito = new Refito.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl("https://api-m.mtime.cn").build();
+  private Refito refito = new Refito.Builder()
+      .baseUrl("https://api-m.mtime.cn")
+      .addCallAdapterFactory(RxJava2ZipCallAdapterFactory.create())
+      //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+      .addConverterFactory(GsonConverterFactory.create())
+      .build();
 
   @SuppressWarnings("ResultOfMethodCallIgnored") public static void main(String[] args) {
     Main main = new Main();
