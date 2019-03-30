@@ -1,7 +1,6 @@
 package com.joker.sample;
 
 import com.joker.sample.api.HomeApi;
-import io.reactivex.schedulers.Schedulers;
 import retrofit2.Refito;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -11,9 +10,9 @@ public class Main {
   @SuppressWarnings("ResultOfMethodCallIgnored") public static void main(String[] args) {
     Main main = new Main();
     main.refito.create(HomeApi.class)
-        .getHot()
-        .getSell()
-        .getPersons()
+        .getHot("290")
+        .getSell("290")
+        .getPersons("217896")
         .zip()
         .subscribe(response -> System.out.println(response.getMessage()),
             Throwable::printStackTrace);

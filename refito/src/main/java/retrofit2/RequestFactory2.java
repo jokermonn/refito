@@ -1,35 +1,35 @@
 package retrofit2;
 
+import io.reactivex.Observable;
+import java.lang.reflect.Field;
+import okhttp3.ResponseBody;
+import retrofit2.http.Chunk;
+
 final class RequestFactory2 {
-    private RequestFactory requestFactory;
-    private Object[] args;
-    private String chunk;
-    private Converter converter;
+  private Field field;
 
-    public static RequestFactory2 create(RequestFactory requestFactory, Object[] args, String chunk, Converter converter) {
-        return new RequestFactory2(requestFactory, args, chunk, converter);
-    }
+  final RequestFactory requestFactory;
+  final Converter<ResponseBody, Observable<?>> converter;
 
-    private RequestFactory2(RequestFactory requestFactory, Object[] args, String chunk, Converter converter) {
-        this.requestFactory = requestFactory;
-        this.args = args;
-        this.chunk = chunk;
-        this.converter = converter;
-    }
+  static RequestFactory2 create(RequestFactory requestFactory, String chunkValue,
+      Class<?> zipResponseClass, Converter<ResponseBody, Observable<?>> converter) {
+    return new RequestFactory2(requestFactory, chunkValue, zipResponseClass, converter);
+  }
 
-    public Converter getConverter() {
-        return converter;
-    }
+  private RequestFactory2(RequestFactory requestFactory, String chunkValue, Class<?> zipResponseClass,
+      Converter<ResponseBody, Observable<?>> converter) {
+    this.requestFactory = requestFactory;
+    this.converter = converter;
 
-    public Object[] getArgs() {
-        return args;
+    for (Field declaredField : zipResponseClass.getDeclaredFields()) {
+      Chunk chunk = declaredField.getAnnotation(Chunk.class);
+      if (chunk != null && chunk.value().equals(chunkValue)) {
+        field = declaredField;
+      }
     }
+  }
 
-    public RequestFactory getRequestFactory() {
-        return requestFactory;
-    }
-
-    public String getChunk() {
-        return chunk;
-    }
+  public Field getField() {
+    return field;
+  }
 }

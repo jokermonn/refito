@@ -12,7 +12,7 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.ZipMethod;
 
-public class RxJava2ZipCallAdapterFactory extends CallAdapter.Factory {
+public final class RxJava2ZipCallAdapterFactory extends CallAdapter.Factory {
 
   public static RxJava2ZipCallAdapterFactory create() {
     return new RxJava2ZipCallAdapterFactory(null, false);
@@ -36,40 +36,15 @@ public class RxJava2ZipCallAdapterFactory extends CallAdapter.Factory {
     this.isAsync = isAsync;
   }
 
-  private List<CallAdapter> callAdapterList = new ArrayList<>();
-
-  public void setCallAdapters(List<CallAdapter> callAdapters) {
-    callAdapterList.clear();
-    callAdapterList.addAll(callAdapters);
-  }
-
   @Override
   public CallAdapter<?, ?> get(Type observableType, Annotation[] annotations, Retrofit retrofit) {
     if (findZipMethodAnnotation(annotations)) {
-      boolean isResult = false;
-      boolean isBody = false;
-      Type responseType;
-
       Class<?> rawObservableType = getRawType(observableType);
-      if (rawObservableType == Response.class) {
-        if (!(observableType instanceof ParameterizedType)) {
-          throw new IllegalStateException("Response must be parameterized"
-              + " as Response<Foo> or Response<? extends Foo>");
-        }
-        responseType = getParameterUpperBound(0, (ParameterizedType) observableType);
-      } else if (rawObservableType == Result.class) {
-        if (!(observableType instanceof ParameterizedType)) {
-          throw new IllegalStateException("Result must be parameterized"
-              + " as Result<Foo> or Result<? extends Foo>");
-        }
-        responseType = getParameterUpperBound(0, (ParameterizedType) observableType);
-        isResult = true;
-      } else {
-        responseType = observableType;
-        isBody = true;
+      if (rawObservableType == Response.class || rawObservableType == Result.class) {
+        throw new IllegalStateException("Response type can not be Response or Result");
       }
 
-      return new RxJava2ZipCallAdapter(responseType, scheduler, isAsync, isResult, isBody, callAdapterList);
+      return new RxJava2ZipCallAdapter(observableType, scheduler, isAsync);
     }
     return null;
   }

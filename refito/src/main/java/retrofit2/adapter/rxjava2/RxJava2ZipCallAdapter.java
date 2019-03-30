@@ -11,51 +11,41 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import retrofit2.*;
-import retrofit2.http.Chunk;
 
 final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
 
-  private final Type responseType;
+  private final Type zipResponseType;
   private final @Nullable Scheduler scheduler;
   private final boolean isAsync;
-  private final boolean isResult;
-  private final boolean isBody;
 
-  RxJava2ZipCallAdapter(Type responseType, @Nullable Scheduler scheduler, boolean isAsync,
-      boolean isResult, boolean isBody, List<CallAdapter> callAdapters) {
-    this.responseType = responseType;
+  RxJava2ZipCallAdapter(Type zipResponseType, @Nullable Scheduler scheduler, boolean isAsync) {
+    this.zipResponseType = zipResponseType;
     this.scheduler = scheduler;
     this.isAsync = isAsync;
-    this.isResult = isResult;
-    this.isBody = isBody;
   }
 
   @Override public Type responseType() {
-    return responseType;
+    return zipResponseType;
   }
 
-  @SuppressWarnings("unchecked") @Override public Object adapt(Call<R> call) {
+  @SuppressWarnings("unchecked") @Override public Object adapt(final Call<R> call) {
     if (call instanceof RefitoCall) {
       List<Observable<Response>> observableList = new ArrayList<>();
-      final List<CallWrapper> callWrappers = ((RefitoCall) call).getCallWrappers();
-      for (CallWrapper callWrapper : callWrappers) {
-        observableList.add(isAsync
-            ? new CallEnqueueObservable<>(callWrapper.getCall())
-            : new CallExecuteObservable<>(callWrapper.getCall()));
+      final List<Call> callWrappers = ((RefitoCall) call).getCalls();
+      for (Call realCall : callWrappers) {
+        observableList.add(isAsync ? new CallEnqueueObservable<>(realCall)
+            : new CallExecuteObservable<>(realCall));
       }
       Observable<?> observable = Observable.zip(observableList, new Function<Object[], Object>() {
         @Override public Object apply(Object[] objects) throws Exception {
-          Class<? extends Type> response = (Class<? extends Type>) responseType;
-          Object result = response.newInstance();
+          Class<? extends Type> zipResponseType =
+              (Class<? extends Type>) RxJava2ZipCallAdapter.this.zipResponseType;
+          Object result = zipResponseType.newInstance();
           for (int i = 0; i < objects.length; i++) {
             Response object = (Response) objects[i];
-            for (Field declaredField : response.getDeclaredFields()) {
-              Chunk chunk = declaredField.getAnnotation(Chunk.class);
-              if (chunk != null && callWrappers.get(i).getChunk().equals(chunk.value())) {
-                declaredField.setAccessible(true);
-                declaredField.set(result, object.body());
-              }
-            }
+            Field filed = ((RefitoCall) call).findFiledByIndex(i);
+            filed.setAccessible(true);
+            filed.set(result, object.body());
           }
           return result;
         }
@@ -65,6 +55,6 @@ final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
       }
       return RxJavaPlugins.onAssembly(observable);
     }
-    return null;
+    throw new IllegalStateException("call must be instance of RefitoCall in RxJava2ZipCallAdapter");
   }
 }

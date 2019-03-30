@@ -23,7 +23,6 @@ import static java.util.Collections.unmodifiableList;
 
 public class Refito {
   final okhttp3.Call.Factory callFactory;
-  final RxJava2ZipCallAdapterFactory rxJava2ZipCallAdapterFactory;
   Retrofit retrofit;
 
   Refito(okhttp3.Call.Factory callFactory, HttpUrl baseUrl,
@@ -31,70 +30,31 @@ public class Refito {
       @Nullable Executor callbackExecutor, boolean validateEagerly) {
     this.callFactory = callFactory;
     // TODO
-    rxJava2ZipCallAdapterFactory = RxJava2ZipCallAdapterFactory.create();
-    callAdapterFactories.add(0, rxJava2ZipCallAdapterFactory);
+    callAdapterFactories.add(0, RxJava2ZipCallAdapterFactory.create());
     retrofit = new Retrofit(callFactory, baseUrl, converterFactories, callAdapterFactories,
         callbackExecutor, validateEagerly);
   }
 
   @SuppressWarnings("unchecked") public <T> T create(final Class<T> service) {
     return ZipApi.class.isAssignableFrom(service) ? (T) Proxy.newProxyInstance(
-        service.getClassLoader(), new Class[] { service },
+        service.getClassLoader(), new Class[] {service},
         new InvocationHandler() {
           private final Map<Method, Object[]> methodMap = new HashMap<>();
-          private Set<String> methodAnnotationCalibrator = new HashSet<>();
-          private Set<String> fieldAnnotationCalibrator = new HashSet<>();
-
-          private MethodHandler methodHandler;
-
-          {
-            for (Class<?> declaredClass : service.getDeclaredClasses()) {
-              if (declaredClass.getAnnotation(ZipResponseBody.class) != null) {
-                methodHandler = new MethodHandler(declaredClass, retrofit);
-
-                for (Field field : declaredClass.getDeclaredFields()) {
-                  Chunk chunk = field.getAnnotation(Chunk.class);
-                  if (chunk != null) {
-                    String value = chunk.value();
-                    if (!fieldAnnotationCalibrator.contains(value)) {
-                      fieldAnnotationCalibrator.add(value);
-                    } else {
-                      throw new ChunkValueRepeatException(chunk);
-                    }
-                  }
-                }
-              }
-            }
-            if (methodHandler == null) {
-              throw new IllegalArgumentException(
-                  "u must use @ZipResponseBody annotated the ResponseBody.");
-            }
-          }
 
           public Object invoke(Object proxy, Method method, @Nullable Object[] args)
               throws Throwable {
             if (method.getDeclaringClass() == Object.class) {
               return method.invoke(this, args);
             } else if (method.getDeclaringClass() == ZipApi.class) {
-              methodAnnotationCalibrator.removeAll(fieldAnnotationCalibrator);
-              if (methodAnnotationCalibrator.size() > 0) {
-                throw new IllegalArgumentException("do u forget to use "
-                    + methodAnnotationCalibrator.toString()
-                    + " to annotation RefitoCallResponse?");
+              for (Class<?> declaredClass : service.getDeclaredClasses()) {
+                if (declaredClass.getAnnotation(ZipResponseBody.class) != null) {
+                  return new MethodHandler(declaredClass, retrofit).handle(methodMap);
+                }
               }
-              return methodHandler.handle(methodMap, rxJava2ZipCallAdapterFactory);
+              throw new IllegalArgumentException(
+                  "you must use @ZipResponseBody annotated the zip ResponseBody.");
             } else {
-              Chunk chunk = method.getAnnotation(Chunk.class);
-              if (chunk != null && !methodAnnotationCalibrator.contains(chunk.value())) {
-                methodMap.put(method, args != null ? args : new Object[0]);
-              } else if (chunk == null) {
-                throw new IllegalArgumentException(
-                    "u must use @Chunk annotated the method " + method);
-              } else {
-                throw new ChunkValueRepeatException(chunk);
-              }
-              methodAnnotationCalibrator.add(chunk.value());
-
+              methodMap.put(method, args != null ? args : new Object[0]);
               return proxy;
             }
           }

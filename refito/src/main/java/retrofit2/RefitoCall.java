@@ -1,61 +1,68 @@
 package retrofit2;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
 import io.reactivex.Observable;
 import okhttp3.Request;
+import retrofit2.http.Chunk;
 
 public final class RefitoCall implements Call<Observable<?>> {
 
-  private List<CallWrapper> callWrappers;
+  private List<Call> calls;
+  private List<Field> fields;
 
-  public List<CallWrapper> getCallWrappers() {
-    for (RequestFactory2 requestFactory2 : requestFactory2s) {
-      callWrappers.add(new CallWrapper(new OkHttpCall(requestFactory2.getRequestFactory(), requestFactory2.getArgs(), callFactory, requestFactory2.getConverter()), requestFactory2.getChunk()));
-    }
-    return callWrappers;
+  public List<Call> getCalls() {
+    return calls;
   }
 
-  private final List<RequestFactory2> requestFactory2s;
-  private final okhttp3.Call.Factory callFactory;
+  public Field findFiledByIndex(int i) {
+    return fields.get(i);
+  }
 
-  RefitoCall(List<RequestFactory2> requestFactory2s, okhttp3.Call.Factory factory) {
-    callWrappers = new ArrayList<>(requestFactory2s.size());
-    this.requestFactory2s = requestFactory2s;
-    this.callFactory = factory;
+  RefitoCall(List<RequestFactory2> requestFactory2s, Object[] args,
+      okhttp3.Call.Factory callFactory) {
+    calls = new ArrayList<>(requestFactory2s.size());
+    fields = new ArrayList<>(requestFactory2s.size());
+
+    for (int i = 0; i < requestFactory2s.size(); i++) {
+      RequestFactory2 requestFactory2 = requestFactory2s.get(i);
+      calls.add(new OkHttpCall<>(requestFactory2.requestFactory, (Object[]) args[i], callFactory,
+          requestFactory2.converter));
+      fields.add(requestFactory2.getField());
+    }
   }
 
   @Override
   public Response<Observable<?>> execute() throws IOException {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void enqueue(Callback<Observable<?>> callback) {
-
+    throw new UnsupportedOperationException();
   }
 
   @Override public boolean isExecuted() {
-    return false;
+    throw new UnsupportedOperationException();
   }
 
   @Override public void cancel() {
-
+    throw new UnsupportedOperationException();
   }
 
   @Override public boolean isCanceled() {
-    return false;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public Call<Observable<?>> clone() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
-
   @Override public Request request() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 }

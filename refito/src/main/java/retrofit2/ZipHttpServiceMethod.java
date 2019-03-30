@@ -7,29 +7,48 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import okhttp3.ResponseBody;
-import retrofit2.adapter.rxjava2.RxJava2ZipCallAdapterFactory;
 import retrofit2.http.Chunk;
 
 import static retrofit2.Utils.methodError;
 
-public class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
+final class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
+
   @Override Observable<?> invoke(Object[] args) {
-    return (Observable<?>) callAdapter.adapt(new RefitoCall(requestFactory2s, callFactory));
+    return (Observable<?>) callAdapter.adapt(new RefitoCall(requestFactory2s, args, callFactory));
   }
 
-  static ZipHttpServiceMethod parseAnnotations(Retrofit retrofit, List<MethodInfos> methodInfos, RxJava2ZipCallAdapterFactory factory, Class<?> responseClass) {
-      List<RequestFactory2> requestFactory2s = new ArrayList<>(methodInfos.size());
-      List<CallAdapter> callAdapters = new ArrayList<>(methodInfos.size());
-      for (MethodInfos methodInfo : methodInfos) {
-          Method method = methodInfo.getMethod();
-          Converter responseConverter = createResponseConverter(retrofit, method, methodInfo.getMethodReturnType());
-          requestFactory2s.add(RequestFactory2.create(RequestFactory.parseAnnotations(retrofit, method), methodInfo.getArgs(), method.getAnnotation(Chunk.class).value(),responseConverter));
-      }
+  static ZipHttpServiceMethod parseAnnotations(Retrofit retrofit, List<MethodType> methodTypes,
+      Class<?> zipResponseClass) {
+    List<RequestFactory2> requestFactory2s = new ArrayList<>(methodTypes.size());
+    for (MethodType methodInfo : methodTypes) {
+      Method method = methodInfo.method;
+      requestFactory2s.add(
+          RequestFactory2.create(
+              RequestFactory.parseAnnotations(retrofit, method),
+              method.getAnnotation(Chunk.class).value(),
+              zipResponseClass,
+              createResponseConverter(retrofit, method, methodInfo.methodReturnType)
+          )
+      );
+    }
 
-    return new ZipHttpServiceMethod(requestFactory2s, callAdapters, retrofit.callFactory, factory, responseClass);
+    CallAdapter<Observable<?>, Object> callAdapter = createCallAdapter(retrofit, zipResponseClass);
+    return new ZipHttpServiceMethod(requestFactory2s, retrofit.callFactory, callAdapter);
   }
 
-  private static <ResponseT> Converter<ResponseBody, ResponseT> createResponseConverter(
+  private static CallAdapter<Observable<?>, Object> createCallAdapter(
+      Retrofit retrofit, Type responseType) {
+    //noinspection unchecked
+    return (CallAdapter<Observable<?>, Object>) retrofit.callAdapter(responseType,
+        new Annotation[] {new Annotation() {
+          @Override
+          public Class<? extends Annotation> annotationType() {
+            return ZipMethod.class;
+          }
+        }});
+  }
+
+  private static Converter<ResponseBody, Observable<?>> createResponseConverter(
       Retrofit retrofit, Method method, Type responseType) {
     Annotation[] annotations = method.getAnnotations();
     try {
@@ -41,17 +60,12 @@ public class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
 
   private final okhttp3.Call.Factory callFactory;
   private final List<RequestFactory2> requestFactory2s;
-  private final CallAdapter callAdapter;
+  private final CallAdapter<Observable<?>, Object> callAdapter;
 
-  private ZipHttpServiceMethod(List<RequestFactory2> requestFactory2s, List<CallAdapter> callAdapters, okhttp3.Call.Factory callFactory, RxJava2ZipCallAdapterFactory factory, Class<?> responseClass) {
-      this.requestFactory2s = requestFactory2s;
+  private ZipHttpServiceMethod(List<RequestFactory2> requestFactory2s,
+      okhttp3.Call.Factory callFactory, CallAdapter<Observable<?>, Object> callAdapter) {
+    this.requestFactory2s = requestFactory2s;
     this.callFactory = callFactory;
-    factory.setCallAdapters(callAdapters);
-    this.callAdapter = factory.get(responseClass, new Annotation[]{new Annotation() {
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            return ZipMethod.class;
-        }
-    }}, null);
+    this.callAdapter = callAdapter;
   }
 }
