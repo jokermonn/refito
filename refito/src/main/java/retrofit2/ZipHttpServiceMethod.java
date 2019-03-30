@@ -7,7 +7,6 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import okhttp3.ResponseBody;
-import retrofit2.http.Chunk;
 
 import static retrofit2.Utils.methodError;
 
@@ -17,16 +16,15 @@ final class ZipHttpServiceMethod extends ServiceMethod<Observable<?>> {
     return (Observable<?>) callAdapter.adapt(new RefitoCall(requestFactory2s, args, callFactory));
   }
 
-  static ZipHttpServiceMethod parseAnnotations(Retrofit retrofit, List<MethodType> methodTypes,
-      Class<?> zipResponseClass) {
-    List<RequestFactory2> requestFactory2s = new ArrayList<>(methodTypes.size());
-    for (MethodType methodInfo : methodTypes) {
+  static ZipHttpServiceMethod parseAnnotations(Retrofit retrofit,
+      List<MethodComposition> methodCompositions, Class<?> zipResponseClass) {
+    List<RequestFactory2> requestFactory2s = new ArrayList<>(methodCompositions.size());
+    for (MethodComposition methodInfo : methodCompositions) {
       Method method = methodInfo.method;
       requestFactory2s.add(
           RequestFactory2.create(
               RequestFactory.parseAnnotations(retrofit, method),
-              method.getAnnotation(Chunk.class).value(),
-              zipResponseClass,
+              methodInfo.field,
               createResponseConverter(retrofit, method, methodInfo.methodReturnType)
           )
       );

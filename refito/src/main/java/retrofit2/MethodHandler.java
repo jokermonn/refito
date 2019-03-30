@@ -24,21 +24,23 @@ final class MethodHandler<T> {
 
   Object handle(Map<Method, Object[]> targetMethods) {
     Field[] declaredFields = zipResponseClass.getDeclaredFields();
-    Map<String, Class<?>> chunkWithFieldType = new HashMap<>(declaredFields.length);
+    Map<String, Field> chunkWithField = new HashMap<>(declaredFields.length);
     for (Field declaredField : declaredFields) {
       Chunk fieldChunk = declaredField.getAnnotation(Chunk.class);
       if (fieldChunk == null) {
         continue;
       }
 
+      /** Check for duplicate chunk value **/
       String fieldChunkValue = fieldChunk.value();
-      if (chunkWithFieldType.containsKey(fieldChunkValue)) {
+      if (chunkWithField.containsKey(fieldChunkValue)) {
         throw new ChunkValueRepeatException(fieldChunk);
       }
-      chunkWithFieldType.put(fieldChunkValue, declaredField.getType());
+
+      chunkWithField.put(fieldChunkValue, declaredField);
     }
 
-    List<MethodType> methodTypes = new ArrayList<>(targetMethods.size());
+    List<MethodComposition> methodCompositions = new ArrayList<>(targetMethods.size());
     List<Object[]> args = new ArrayList<>(targetMethods.size());
     Set<String> methodAnnotationCalibrator = new HashSet<>();
     for (Map.Entry<Method, Object[]> methodEntry : targetMethods.entrySet()) {
@@ -50,24 +52,25 @@ final class MethodHandler<T> {
             "you must use @Chunk annotated the method " + method);
       }
 
+      /** Check for duplicate chunk value **/
       String methodChunkValue = methodChunk.value();
       if (methodAnnotationCalibrator.contains(methodChunkValue)) {
         throw new ChunkValueRepeatException(methodChunk);
       }
       methodAnnotationCalibrator.add(methodChunkValue);
 
-      Class<?> fieldType = chunkWithFieldType.get(methodChunkValue);
-      if (fieldType == null) {
+      Field field = chunkWithField.get(methodChunkValue);
+      if (field == null) {
         throw new IllegalArgumentException("do you forget to use "
-            + methodAnnotationCalibrator.toString()
+            + methodChunkValue
             + " to annotation the method response body?");
       }
 
-      methodTypes.add(MethodType.create(method, fieldType));
+      methodCompositions.add(MethodComposition.create(method, field));
       args.add(methodEntry.getValue());
     }
 
-    return ZipHttpServiceMethod.parseAnnotations(retrofit, methodTypes, zipResponseClass)
+    return ZipHttpServiceMethod.parseAnnotations(retrofit, methodCompositions, zipResponseClass)
         .invoke(args.toArray());
   }
 }

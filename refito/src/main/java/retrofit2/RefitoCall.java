@@ -31,7 +31,7 @@ public final class RefitoCall implements Call<Observable<?>> {
       RequestFactory2 requestFactory2 = requestFactory2s.get(i);
       calls.add(new OkHttpCall<>(requestFactory2.requestFactory, (Object[]) args[i], callFactory,
           requestFactory2.converter));
-      fields.add(requestFactory2.getField());
+      fields.add(requestFactory2.field);
     }
   }
 
