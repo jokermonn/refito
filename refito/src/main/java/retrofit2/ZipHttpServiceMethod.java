@@ -11,6 +11,7 @@ import retrofit2.adapter.rxjava2.RxJava2ZipCallAdapter;
 
 import static retrofit2.Utils.getParameterUpperBound;
 import static retrofit2.Utils.getRawType;
+import static retrofit2.Utils.hasUnresolvableType;
 import static retrofit2.Utils.methodError;
 
 final class ZipHttpServiceMethod extends ServiceMethod<Object> {
@@ -20,17 +21,37 @@ final class ZipHttpServiceMethod extends ServiceMethod<Object> {
   }
 
   static ZipHttpServiceMethod parseAnnotations(Retrofit retrofit,
-      List<MethodComposition> methodCompositions, Type zipMethodType) {
-    List<RequestFactory2> requestFactory2s = new ArrayList<>(methodCompositions.size());
-    for (MethodComposition methodInfo : methodCompositions) {
+      Collection<MethodComposition> chunkMethodCompositions, Type zipMethodType) {
+    List<RequestFactory2> requestFactory2s = new ArrayList<>(chunkMethodCompositions.size());
+    for (MethodComposition methodInfo : chunkMethodCompositions) {
       Method method = methodInfo.method;
       Type methodReturnType = methodInfo.methodReturnType;
       methodReturnType =
           methodReturnType instanceof ParameterizedType ? getRawType(getParameterUpperBound(0,
               (ParameterizedType) methodReturnType)) : methodReturnType;
+
+      if (methodReturnType == Response.class || methodReturnType == okhttp3.Response.class) {
+        throw methodError(method, "'"
+            + Utils.getRawType(methodReturnType).getName()
+            + "' is not a valid response body type. Did you mean ResponseBody?");
+      }
+      if (hasUnresolvableType(methodReturnType)) {
+        throw methodError(method,
+            "Method return type must not include a type variable or wildcard: %s",
+            methodReturnType);
+      }
+      if (methodReturnType == void.class) {
+        throw methodError(method, "Service methods cannot return void.");
+      }
+
+      RequestFactory requestFactory = RequestFactory.parseAnnotations(retrofit, method);
+      if (requestFactory.httpMethod.equals("HEAD") && !Void.class.equals(methodReturnType)) {
+        throw methodError(method, "HEAD method must use Void as response type.");
+      }
+
       requestFactory2s.add(
           RequestFactory2.create(
-              RequestFactory.parseAnnotations(retrofit, method),
+              requestFactory,
               methodInfo.field,
               createResponseConverter(retrofit, method, methodReturnType)
           )

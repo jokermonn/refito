@@ -5,19 +5,21 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import retrofit2.http.Chunk;
 import retrofit2.internal.ChunkValueRepeatException;
 
-import static retrofit2.Utils.getParameterUpperBound;
-import static retrofit2.Utils.getRawType;
-
 final class MethodHandler {
+  private final Map<Collection<MethodComposition>, ServiceMethod<?>> serviceMethodCache =
+      new ConcurrentHashMap<>();
 
   private final Class<?> zipResponseClass;
   private final Type zipMethodType;
@@ -29,10 +31,10 @@ final class MethodHandler {
     this.retrofit = retrofit;
   }
 
-  Object handle(Map<Method, Object[]> targetMethods) {
-    Field[] declaredFields = zipResponseClass.getDeclaredFields();
-    Map<String, Field> chunkWithField = new HashMap<>(declaredFields.length);
-    for (Field declaredField : declaredFields) {
+  Object handle(Map<Method, Object[]> chunkMethods) {
+    Field[] zipResponseClassFields = zipResponseClass.getDeclaredFields();
+    Map<String, Field> chunkWithField = new HashMap<>(zipResponseClassFields.length);
+    for (Field declaredField : zipResponseClassFields) {
       Chunk fieldChunk = declaredField.getAnnotation(Chunk.class);
       if (fieldChunk == null) {
         continue;
@@ -47,16 +49,16 @@ final class MethodHandler {
       chunkWithField.put(fieldChunkValue, declaredField);
     }
 
-    List<MethodComposition> methodCompositions = new ArrayList<>(targetMethods.size());
-    List<Object[]> args = new ArrayList<>(targetMethods.size());
-    Set<String> methodAnnotationCalibrator = new HashSet<>();
-    for (Map.Entry<Method, Object[]> methodEntry : targetMethods.entrySet()) {
+    Set<MethodComposition> methodCompositions = new LinkedHashSet<>(chunkMethods.size());
+    List<Object[]> args = new ArrayList<>(chunkMethods.size());
+    Set<String> methodAnnotationCalibrator = new HashSet<>(chunkMethods.size());
+    for (Map.Entry<Method, Object[]> methodEntry : chunkMethods.entrySet()) {
       Method method = methodEntry.getKey();
 
       Chunk methodChunk = method.getAnnotation(Chunk.class);
       if (methodChunk == null) {
         throw new IllegalArgumentException(
-            "you must use @Chunk annotated the method " + method);
+            "you must use @Chunk annotated the zipMethod " + method);
       }
 
       /** Check for duplicate chunk value **/
@@ -70,14 +72,14 @@ final class MethodHandler {
       if (field == null) {
         throw new IllegalArgumentException("do you forget to use \""
             + methodChunkValue
-            + "\" to annotation the method response body?");
+            + "\" to annotation the zipMethod response body?");
       }
 
       methodCompositions.add(MethodComposition.create(method, field));
       args.add(methodEntry.getValue());
     }
 
-    ParameterizedType parameterizedType = new ParameterizedType() {
+    ParameterizedType zipResponseParameterizedType = new ParameterizedType() {
       @Override public Type[] getActualTypeArguments() {
         return new Type[] {zipResponseClass};
       }
@@ -91,7 +93,23 @@ final class MethodHandler {
       }
     };
 
-    return ZipHttpServiceMethod.parseAnnotations(retrofit, methodCompositions, parameterizedType)
+    return loadServiceMethod(methodCompositions, zipResponseParameterizedType)
         .invoke(args.toArray());
+  }
+
+  private ServiceMethod<?> loadServiceMethod(Collection<MethodComposition> methodCompositions,
+      Type zipResponseType) {
+    ServiceMethod<?> result = serviceMethodCache.get(methodCompositions);
+    if (result != null) return result;
+
+    synchronized (serviceMethodCache) {
+      result = serviceMethodCache.get(methodCompositions);
+      if (result == null) {
+        result =
+            ZipHttpServiceMethod.parseAnnotations(retrofit, methodCompositions, zipResponseType);
+        serviceMethodCache.put(methodCompositions, result);
+      }
+    }
+    return result;
   }
 }

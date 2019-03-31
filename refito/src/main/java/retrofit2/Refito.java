@@ -13,16 +13,14 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import retrofit2.http.ZipResponseBody;
 
+import static java.util.Collections.replaceAll;
 import static java.util.Collections.unmodifiableList;
 
 public class Refito {
   private Retrofit retrofit;
 
-  Refito(okhttp3.Call.Factory callFactory, HttpUrl baseUrl,
-      List<Converter.Factory> converterFactories, List<CallAdapter.Factory> callAdapterFactories,
-      @Nullable Executor callbackExecutor, boolean validateEagerly) {
-    retrofit = new Retrofit(callFactory, baseUrl, converterFactories, callAdapterFactories,
-        callbackExecutor, validateEagerly);
+  Refito(Retrofit retrofit) {
+    this.retrofit = retrofit;
   }
 
   @SuppressWarnings("unchecked") public <T> T create(final Class<T> service) {
@@ -31,21 +29,21 @@ public class Refito {
         new InvocationHandler() {
           private final Map<Method, Object[]> methodMap = new HashMap<>();
 
-          public Object invoke(Object proxy, Method method, @Nullable Object[] args)
+          public Object invoke(Object proxy, Method zipMethod, @Nullable Object[] args)
               throws Throwable {
-            if (method.getDeclaringClass() == Object.class) {
-              return method.invoke(this, args);
-            } else if (method.getDeclaringClass() == ZipApi.class) {
-              for (Class<?> declaredClass : service.getDeclaredClasses()) {
-                if (declaredClass.getAnnotation(ZipResponseBody.class) != null) {
-                  return new MethodHandler(declaredClass, method.getReturnType(), retrofit)
+            if (zipMethod.getDeclaringClass() == Object.class) {
+              return zipMethod.invoke(this, args);
+            } else if (zipMethod.getDeclaringClass() == ZipApi.class) {
+              for (Class<?> zipResponseClass : service.getDeclaredClasses()) {
+                if (zipResponseClass.getAnnotation(ZipResponseBody.class) != null) {
+                  return new MethodHandler(zipResponseClass, zipMethod.getReturnType(), retrofit)
                       .handle(methodMap);
                 }
               }
               throw new IllegalArgumentException(
                   "you must use @ZipResponseBody annotated the zip ResponseBody.");
             } else {
-              methodMap.put(method, args != null ? args : new Object[0]);
+              methodMap.put(zipMethod, args != null ? args : new Object[0]);
               return proxy;
             }
           }
@@ -53,70 +51,64 @@ public class Refito {
   }
 
   public static final class Builder {
-    private @Nullable okhttp3.Call.Factory callFactory;
-    private @Nullable HttpUrl baseUrl;
-    private final List<CallAdapter.Factory> callAdapterFactories = new ArrayList<>();
-    private final List<Converter.Factory> converterFactories = new ArrayList<>();
-    private @Nullable Executor callbackExecutor;
-    private boolean validateEagerly;
+    private Retrofit.Builder builder;
 
     public Builder() {
+      builder = new Retrofit.Builder();
     }
 
     public Builder client(OkHttpClient client) {
-      return callFactory(client);
+      builder.callFactory(client);
+      return this;
     }
 
     public Builder callFactory(okhttp3.Call.Factory factory) {
-      this.callFactory = factory;
+      builder.callFactory(factory);
       return this;
     }
 
     public Builder baseUrl(String baseUrl) {
-      return baseUrl(HttpUrl.get(baseUrl));
+      builder.baseUrl(HttpUrl.get(baseUrl));
+      return this;
     }
 
     public Builder baseUrl(HttpUrl baseUrl) {
-      this.baseUrl = baseUrl;
+      builder.baseUrl(baseUrl);
       return this;
     }
 
     public Builder addCallAdapterFactory(CallAdapter.Factory factory) {
-      callAdapterFactories.add(factory);
+      builder.addCallAdapterFactory(factory);
       return this;
     }
 
     public Builder addConverterFactory(Converter.Factory factory) {
-      converterFactories.add(factory);
+      builder.addConverterFactory(factory);
       return this;
     }
 
     public Builder callbackExecutor(Executor executor) {
-      this.callbackExecutor = executor;
+      builder.callbackExecutor(executor);
       return this;
     }
 
     public List<Converter.Factory> converterFactories() {
-      return this.converterFactories;
+      return builder.converterFactories();
     }
 
     public List<CallAdapter.Factory> callAdapterFactories() {
-      return callAdapterFactories;
+      return builder.callAdapterFactories();
     }
 
     public Builder validateEagerly(boolean validateEagerly) {
-      this.validateEagerly = validateEagerly;
+      builder.validateEagerly(validateEagerly);
       return this;
     }
 
     public Refito build() {
-      okhttp3.Call.Factory callFactory = this.callFactory;
-      if (callFactory == null) {
-        callFactory = new OkHttpClient();
-      }
+      Retrofit retrofit = builder.build();
 
-      return new Refito(callFactory, baseUrl, unmodifiableList(converterFactories),
-          callAdapterFactories, callbackExecutor, validateEagerly);
+      return new Refito(retrofit);
     }
   }
 }
