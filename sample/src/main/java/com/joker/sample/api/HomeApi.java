@@ -1,14 +1,14 @@
 package com.joker.sample.api;
 
-import com.joker.sample.model.Translate;
 import com.joker.sample.model.Sample;
 import com.joker.sample.model.Search;
+import com.joker.sample.model.Translate;
 import java.io.IOException;
 import okhttp3.ResponseBody;
 import retrofit2.Response;
+import retrofit2.ZipApi;
 import retrofit2.adapter.rxjava2.Result;
 import retrofit2.http.Chunk;
-import retrofit2.ZipApi;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
@@ -53,11 +53,12 @@ public interface HomeApi extends ZipApi<HomeApi.HomeApiResponse> {
           + "\n"
           + translateResponse.body().getTranslate()
           + "\n"
-          + listResponseBody.string();
+          + listResponseBody.string()
+          + "\n==============";
     }
 
     public String getSingle() {
-      return search.getSearch();
+      return search.getSearch() + "\n==============";
     }
   }
 }

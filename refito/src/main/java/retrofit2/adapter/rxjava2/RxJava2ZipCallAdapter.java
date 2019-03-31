@@ -9,8 +9,11 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
-
-import retrofit2.*;
+import retrofit2.Call;
+import retrofit2.CallAdapter;
+import retrofit2.RefitoCall;
+import retrofit2.Response;
+import retrofit2.UnsafeAllocator;
 
 public final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
 

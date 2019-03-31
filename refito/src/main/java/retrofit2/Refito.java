@@ -3,18 +3,18 @@ package retrofit2;
 import io.reactivex.annotations.Nullable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
+import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import retrofit2.http.ZipResponseBody;
-
-import static java.util.Collections.replaceAll;
-import static java.util.Collections.unmodifiableList;
 
 public class Refito {
   private Retrofit retrofit;
@@ -36,8 +36,12 @@ public class Refito {
             } else if (zipMethod.getDeclaringClass() == ZipApi.class) {
               for (Class<?> zipResponseClass : service.getDeclaredClasses()) {
                 if (zipResponseClass.getAnnotation(ZipResponseBody.class) != null) {
-                  return new MethodHandler(zipResponseClass, zipMethod.getReturnType(), retrofit)
-                      .handle(methodMap);
+                  ParameterizedType zipResponseType =
+                      getZipResponseParameterizedType(zipResponseClass, zipMethod.getReturnType());
+                  MethodHandler methodHandler = new MethodHandler(zipResponseClass, methodMap);
+
+                  return loadServiceMethod(methodHandler.methodCompositions, zipResponseType)
+                      .invoke(methodHandler.args.toArray());
                 }
               }
               throw new IllegalArgumentException(
@@ -48,6 +52,42 @@ public class Refito {
             }
           }
         }) : retrofit.create(service);
+  }
+
+  private ParameterizedType getZipResponseParameterizedType(final Class<?> zipResponseClass,
+      final Type zipMethodType) {
+    return new ParameterizedType() {
+      @Override public Type[] getActualTypeArguments() {
+        return new Type[] {zipResponseClass};
+      }
+
+      @Override public Type getRawType() {
+        return zipMethodType;
+      }
+
+      @Override public Type getOwnerType() {
+        throw new UnsupportedOperationException();
+      }
+    };
+  }
+
+  private final Map<Collection<MethodComposition>, ServiceMethod<?>> serviceMethodCache =
+      new ConcurrentHashMap<>();
+
+  private ServiceMethod<?> loadServiceMethod(Collection<MethodComposition> methodCompositions,
+      Type zipResponseType) {
+    ServiceMethod<?> result = serviceMethodCache.get(methodCompositions);
+    if (result != null) return result;
+
+    synchronized (serviceMethodCache) {
+      result = serviceMethodCache.get(methodCompositions);
+      if (result == null) {
+        result =
+            ZipHttpServiceMethod.parseAnnotations(retrofit, methodCompositions, zipResponseType);
+        serviceMethodCache.put(methodCompositions, result);
+      }
+    }
+    return result;
   }
 
   public static final class Builder {

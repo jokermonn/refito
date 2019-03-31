@@ -6,13 +6,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-
-import io.reactivex.Observable;
 import okhttp3.Request;
 import retrofit2.adapter.rxjava2.Result;
-import retrofit2.http.Chunk;
 
-import static retrofit2.Utils.getParameterUpperBound;
 import static retrofit2.Utils.getRawType;
 
 public final class RefitoCall implements Call<Object> {
