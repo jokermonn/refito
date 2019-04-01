@@ -22,6 +22,7 @@ public interface HomeApi extends ZipApi<HomeApi.HomeApiResponse> {
   String SAMPLE = "sample";
   String FORMAT = "format";
   String LIST = "list";
+  String BAD = "bad";
 
   @Chunk(SEARCH)
   @GET("/suggest?le=eng&num=80&ver=&doctype=json&keyfrom=&model=&mid=&imei=&vendor=&screen=&ssid=&abtest=")
@@ -40,11 +41,24 @@ public interface HomeApi extends ZipApi<HomeApi.HomeApiResponse> {
   @GET("/mrm/list?client=android&product=dict&version=7.6.8&abtest=4&rsversion=5&mode=publish&nocache=false")
   HomeApi list();
 
+  @Chunk(BAD)
+  @GET("/test")
+  HomeApi bad();
+
   @ZipResponseBody class HomeApiResponse {
     @Chunk(SEARCH) private Search search;
     @Chunk(SAMPLE) private Result<Sample> sampleResult;
     @Chunk(FORMAT) private Response<Translate> translateResponse;
     @Chunk(LIST) private ResponseBody listResponseBody;
+    // 404 请求
+    @Chunk(value = BAD, indispensable = false) private ResponseBody bad;
+
+    public String getBad() throws IOException {
+      return search.getSearch()
+          + "\n"
+          + bad
+          + "\n==============";
+    }
 
     public String getMessage() throws IOException {
       return search.getSearch()

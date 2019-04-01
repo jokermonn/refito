@@ -8,18 +8,20 @@ import java.util.Objects;
 final class MethodComposition {
   /** api method **/
   final Method method;
-  /** response field **/
-  final Field field;
   /** The actual return value of the API method & response filed type **/
   final Type methodReturnType;
+  /** for {@link RequestFactory2} **/
+  final Field field;
+  final boolean indispensable;
 
-  static MethodComposition create(Method method, Field field) {
-    return new MethodComposition(method, field);
+  static MethodComposition create(Method method, Field field, boolean indispensable) {
+    return new MethodComposition(method, field, indispensable);
   }
 
-  private MethodComposition(Method method, Field field) {
+  private MethodComposition(Method method, Field field, boolean indispensable) {
     this.method = method;
     this.field = field;
+    this.indispensable = indispensable;
     this.methodReturnType = field.getGenericType();
   }
 
@@ -27,12 +29,13 @@ final class MethodComposition {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     MethodComposition that = (MethodComposition) o;
-    return Objects.equals(method, that.method) &&
-        Objects.equals(field, that.field) &&
-        Objects.equals(methodReturnType, that.methodReturnType);
+    return indispensable == that.indispensable &&
+        Objects.equals(method, that.method) &&
+        Objects.equals(methodReturnType, that.methodReturnType) &&
+        Objects.equals(field, that.field);
   }
 
   @Override public int hashCode() {
-    return Objects.hash(method, field, methodReturnType);
+    return Objects.hash(method, methodReturnType, field, indispensable);
   }
 }

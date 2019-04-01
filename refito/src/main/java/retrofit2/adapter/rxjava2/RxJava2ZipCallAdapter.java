@@ -40,20 +40,39 @@ public final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
     return zipResponseType;
   }
 
-  @SuppressWarnings("unchecked") @Override public Object adapt(final Call<R> call) {
+  @SuppressWarnings({"unchecked", "ResultOfMethodCallIgnored"}) @Override
+  public Object adapt(final Call<R> call) {
     if (call instanceof RefitoCall) {
       List<Observable<?>> observableList = new ArrayList<>();
       final List<RefitoCall.RealCall> calls = ((RefitoCall) call).getCalls();
-      for (RefitoCall.RealCall realCall : calls) {
+      for (final RefitoCall.RealCall realCall : calls) {
         Observable<Response<Object>> responseObservable = isAsync ?
             new CallEnqueueObservable<>(realCall.getCall()) :
             new CallExecuteObservable<>(realCall.getCall());
+
+        if (!realCall.isIndispensable()) {
+          responseObservable.onErrorReturn(new Function<Throwable, Response<Object>>() {
+            @Override public Response<Object> apply(Throwable throwable) throws Exception {
+              System.out.println(throwable);
+              return Response.success(realCall.defaultValue());
+            }
+          });
+        }
 
         Observable<?> observable;
         if (realCall.isResult()) {
           observable = new ResultObservable<>(responseObservable);
         } else if (realCall.isBody()) {
-          observable = new BodyObservable<>(responseObservable);
+          observable = new BodyObservable<>(responseObservable)
+              .onErrorReturn(new Function<Throwable, Object>() {
+                @Override public Object apply(Throwable throwable) throws Exception {
+                  if (realCall.isIndispensable()) {
+                    return realCall.defaultValue();
+                  } else {
+                    throw new RuntimeException(throwable);
+                  }
+                }
+              });
         } else {
           observable = responseObservable;
         }
@@ -65,9 +84,7 @@ public final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
           Class<? extends Type> zipResponseType =
               (Class<? extends Type>) RxJava2ZipCallAdapter.this.zipResponseType;
           Object result = UnsafeAllocator.create().newInstance(zipResponseType);
-          for (int i = 0; i < objects.length; i++) {
-            ((RefitoCall) call).setResponse(i, result, objects[i]);
-          }
+          ((RefitoCall) call).setResponse(result, objects);
           return result;
         }
       });

@@ -62,7 +62,7 @@ final class MethodHandler {
             + "\" to annotation the zipMethod response body?");
       }
 
-      methodCompositions.add(MethodComposition.create(method, field));
+      methodCompositions.add(MethodComposition.create(method, field, methodChunk.indispensable()));
       args.add(methodEntry.getValue());
     }
   }

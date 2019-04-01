@@ -33,12 +33,10 @@ public class Main {
 
     refito.create(HomeApi.class)
         .search("single")
-        .sample("bureaucracy")
-        .format("format")
-        .list()
+        .bad()
         .zip()
         .subscribe(
-            response -> System.out.println(response.getMessage()),
+            response -> System.out.println(response.getBad()),
             Throwable::printStackTrace
         );
 

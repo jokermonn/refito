@@ -54,6 +54,7 @@ final class ZipHttpServiceMethod extends ServiceMethod<Object> {
           RequestFactory2.create(
               requestFactory,
               methodInfo.field,
+              methodInfo.indispensable,
               createResponseConverter(retrofit, method, methodReturnType)
           )
       );
