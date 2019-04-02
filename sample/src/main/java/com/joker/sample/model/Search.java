@@ -17,4 +17,8 @@ public class Search {
   public String getSearch() {
     return data.model.get(0).explain;
   }
+
+  public Model getData() {
+    return data;
+  }
 }

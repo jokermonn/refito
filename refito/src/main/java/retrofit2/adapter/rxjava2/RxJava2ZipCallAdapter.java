@@ -50,31 +50,37 @@ public final class RxJava2ZipCallAdapter<R> implements CallAdapter<R, Object> {
             new CallEnqueueObservable<>(realCall.getCall()) :
             new CallExecuteObservable<>(realCall.getCall());
 
-        if (!realCall.isIndispensable()) {
-          responseObservable.onErrorReturn(new Function<Throwable, Response<Object>>() {
-            @Override public Response<Object> apply(Throwable throwable) throws Exception {
-              System.out.println(throwable);
-              return Response.success(realCall.defaultValue());
-            }
-          });
-        }
-
-        Observable<?> observable;
+        Observable observable;
         if (realCall.isResult()) {
           observable = new ResultObservable<>(responseObservable);
-        } else if (realCall.isBody()) {
-          observable = new BodyObservable<>(responseObservable)
-              .onErrorReturn(new Function<Throwable, Object>() {
-                @Override public Object apply(Throwable throwable) throws Exception {
-                  if (realCall.isIndispensable()) {
-                    return realCall.defaultValue();
-                  } else {
-                    throw new RuntimeException(throwable);
+          if (realCall.isNotIndispensable()) {
+            observable = observable
+                .onErrorReturn(new Function<Throwable, Result<Object>>() {
+                  @Override public Result<Object> apply(Throwable throwable) throws Exception {
+                    return Result.response(Response.success(null));
                   }
-                }
-              });
+                });
+          }
+        } else if (realCall.isBody()) {
+          observable = new BodyObservable<>(responseObservable);
+          if (realCall.isNotIndispensable()) {
+            observable = observable
+                .onErrorReturn(new Function() {
+                  @Override public Object apply(Object o) throws Exception {
+                    return realCall.defaultValue();
+                  }
+                });
+          }
         } else {
           observable = responseObservable;
+          if (realCall.isNotIndispensable()) {
+            observable = observable
+                .onErrorReturn(new Function<Throwable, Response<Object>>() {
+                  @Override public Response<Object> apply(Throwable throwable) throws Exception {
+                    return Response.success(null);
+                  }
+                });
+          }
         }
 
         observableList.add(observable);

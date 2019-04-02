@@ -33,6 +33,10 @@ final class MethodHandler {
         throw new ChunkValueRepeatException(fieldChunk);
       }
 
+      if (!fieldChunk.indispensable()) {
+        throw new IllegalArgumentException("indispensable must be used in annotating method");
+      }
+
       chunkWithField.put(fieldChunkValue, declaredField);
     }
 

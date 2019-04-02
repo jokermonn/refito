@@ -50,43 +50,37 @@ public final class RefitoCall implements Call<Object> {
   }
 
   public static class RealCall {
+    /** {@link OkHttpCall} instance **/
     private final Call<Object> call;
+    /** The corresponding field of response **/
     private final Field field;
+    /** whether the response is indispensable **/
     private final boolean indispensable;
+    /** {@link Result} or {@link ResponseBody} or {@link Response} or not ParameterizedType **/
+    private final Type returnType;
+    /** returnType is {@link Result} **/
     private boolean isResult;
+    /** returnType is not ParameterizedType **/
     private boolean isBody;
-    private Object defaultValue;
 
     private RealCall(Call<Object> call, Field field, boolean indispensable) {
       this.call = call;
       this.field = field;
       this.indispensable = indispensable;
 
-      Type returnType = field.getGenericType();
+      returnType = field.getGenericType();
       if (returnType instanceof ParameterizedType) {
         Class<?> rawObservableType = getRawType(returnType);
         if (rawObservableType == Result.class) {
           isResult = true;
-          defaultValue = Result.response(Response.success(null));
-        } else if (rawObservableType == Response.class) {
-          defaultValue = Response.success(null);
         }
       } else {
         isBody = true;
-        if (returnType == ResponseBody.class) {
-          defaultValue = EMPTY_RESPONSE;
-        } else {
-          try {
-            defaultValue = UnsafeAllocator.create().newInstance(field.getType());
-          } catch (Exception e) {
-            e.printStackTrace();
-          }
-        }
       }
     }
 
-    public boolean isIndispensable() {
-      return indispensable;
+    public boolean isNotIndispensable() {
+      return !indispensable;
     }
 
     public Call getCall() {
@@ -101,8 +95,9 @@ public final class RefitoCall implements Call<Object> {
       return isBody;
     }
 
-    public Object defaultValue() {
-      return defaultValue;
+    public Object defaultValue() throws Exception {
+      return returnType == ResponseBody.class ? EMPTY_RESPONSE
+          : UnsafeAllocator.create().newInstance(field.getType());
     }
   }
 
@@ -120,12 +115,18 @@ public final class RefitoCall implements Call<Object> {
     throw new UnsupportedOperationException();
   }
 
+  private volatile boolean canceled;
+
   @Override public void cancel() {
-    throw new UnsupportedOperationException();
+    canceled = true;
+
+    for (RealCall call : calls) {
+      call.call.cancel();
+    }
   }
 
   @Override public boolean isCanceled() {
-    throw new UnsupportedOperationException();
+    return canceled;
   }
 
   @Override

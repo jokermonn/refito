@@ -41,7 +41,7 @@ public interface HomeApi extends ZipApi<HomeApi.HomeApiResponse> {
   @GET("/mrm/list?client=android&product=dict&version=7.6.8&abtest=4&rsversion=5&mode=publish&nocache=false")
   HomeApi list();
 
-  @Chunk(BAD)
+  @Chunk(value = BAD, indispensable = false)
   @GET("/test")
   HomeApi bad();
 
@@ -51,7 +51,7 @@ public interface HomeApi extends ZipApi<HomeApi.HomeApiResponse> {
     @Chunk(FORMAT) private Response<Translate> translateResponse;
     @Chunk(LIST) private ResponseBody listResponseBody;
     // 404 请求
-    @Chunk(value = BAD, indispensable = false) private ResponseBody bad;
+    @Chunk(BAD) private ResponseBody bad;
 
     public String getBad() throws IOException {
       return search.getSearch()
